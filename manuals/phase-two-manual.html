@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<!-- MANUAL SCOPE
+     Project:  PSST
+     Branch:   codex/022-psst-rewrite-ready
+     Scope:    phase-2-managed-pi-adapter
+     Covers:   Managed Pi runtime tracking, SDK/RPC backends, Continue execution, and the new input/control/event API surface.
+     Built:    2026-06-20
+     Rebuild:  /flow-progress-manual  (then choose scope: phase-2-managed-pi-adapter)
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>PSST Phase Two Manual</title>
+    <style>
+      :root {
+        --ink: #161616;
+        --mid: #5b5b5b;
+        --faint: #767676;
+        --rule: #d8d2c8;
+        --bg: #fbf8f1;
+        --code-bg: #f1ece2;
+        --accent: #a2602c;
+        --good: #2f6b3b;
+        --warn: #8f5b00;
+        --next: #6a4fb3;
+        --max: 70ch;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: auto; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.6;
+      }
+
+      main {
+        width: min(100%, 78rem);
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+      }
+
+      h1, h2, h3 {
+        line-height: 1.2;
+        font-weight: 600;
+        margin: 0 0 0.8rem;
+      }
+
+      h1 { font-size: clamp(2.6rem, 5vw, 4.2rem); }
+      h2 {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        font-size: 1.7rem;
+      }
+
+      p, li, td, th, figcaption {
+        max-width: var(--max);
+        font-size: 1.05rem;
+      }
+
+      a {
+        color: var(--ink);
+        text-decoration: underline;
+      }
+
+      .hero {
+        padding: 1rem 0 1.75rem;
+      }
+
+      .subtitle {
+        margin: 0;
+        max-width: 62ch;
+        font-size: 1.18rem;
+        color: var(--mid);
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0 0;
+      }
+
+      .badge,
+      .phase-badge {
+        display: inline-block;
+        padding: 0.22rem 0.6rem;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        font-size: 0.9rem;
+        color: var(--mid);
+        background: #fffaf1;
+      }
+
+      .phase-badge.done { border-color: #b4ceb9; color: var(--good); }
+      .phase-badge.progress { border-color: #d8c293; color: var(--warn); }
+      .phase-badge.next { border-color: #cbbce8; color: var(--next); }
+
+      nav.toc {
+        margin: 1.5rem 0 2rem;
+        padding: 1rem 1.15rem;
+        border: 1px solid var(--rule);
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      nav.toc ol {
+        margin: 0.75rem 0 0;
+        padding-left: 1.25rem;
+      }
+
+      .tree,
+      pre,
+      code,
+      .mono {
+        font-family: "Courier New", Courier, monospace;
+      }
+
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--rule);
+        padding: 0.9rem;
+        overflow-x: auto;
+        position: relative;
+        white-space: pre-wrap;
+      }
+
+      .copy-wrap {
+        position: relative;
+        max-width: var(--max);
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 0.6rem;
+        right: 0.6rem;
+        border: 1px solid var(--rule);
+        background: #fffaf1;
+        color: var(--mid);
+        font: inherit;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+      }
+
+      th, td {
+        border-top: 1px solid var(--rule);
+        padding: 0.65rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .invariants li,
+      .timeline li {
+        margin-bottom: 0.6rem;
+      }
+
+      #architecture {
+        width: 100%;
+        max-width: 1200px;
+        border: 1px solid var(--rule);
+        background: #fffdf9;
+        display: block;
+      }
+
+      .exercise {
+        max-width: var(--max);
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.65);
+        padding: 1rem 1rem 1.2rem;
+        margin: 1rem 0;
+      }
+
+      .exercise h3 {
+        margin-bottom: 0.45rem;
+      }
+
+      details {
+        max-width: var(--max);
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.55);
+        padding: 0.8rem 1rem;
+        margin: 0.8rem 0;
+      }
+
+      details summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .chart {
+        max-width: var(--max);
+        margin: 1rem 0;
+      }
+
+      .bar-row {
+        margin: 0.9rem 0;
+      }
+
+      .bar-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.98rem;
+      }
+
+      .bar-track {
+        height: 14px;
+        background: #efe7da;
+        border: 1px solid var(--rule);
+        overflow: hidden;
+      }
+
+      .bar {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #c8894b, #8a5c28);
+        transition: width 900ms ease-out;
+      }
+
+      .glossary-search {
+        width: min(100%, 28rem);
+        padding: 0.65rem 0.75rem;
+        border: 1px solid var(--rule);
+        background: #fffdf9;
+        font: inherit;
+      }
+
+      .glossary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        gap: 0.85rem;
+        margin-top: 1rem;
+      }
+
+      .glossary-card {
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.6);
+        padding: 0.9rem;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        color: var(--faint);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" id="hero">
+        <h1>PSST</h1>
+        <p class="subtitle">
+          Phase 2 turns Continue from a stored decision into an executable control path by adding managed
+          Pi runtimes, SDK-first and RPC-second backends, and public input, control, and event endpoints.
+        </p>
+        <div class="badges">
+          <span class="badge">Node 22</span>
+          <span class="badge">TypeScript 5.8</span>
+          <span class="badge">SQLite WAL</span>
+          <span class="badge">Vitest</span>
+          <span class="badge">Branch: codex/022-psst-rewrite-ready</span>
+          <span class="badge">Scope: phase-2-managed-pi-adapter</span>
+        </div>
+      </section>
+
+      <nav class="toc" aria-labelledby="toc-title">
+        <strong id="toc-title">Table of contents</strong>
+        <ol>
+          <li><a href="#delivered">What this phase delivered</a></li>
+          <li><a href="#why">Why this phase exists</a></li>
+          <li><a href="#structure">Repo structure</a></li>
+          <li><a href="#mental-model">Mental model</a></li>
+          <li><a href="#architecture-section">Architecture diagram</a></li>
+          <li><a href="#timeline">Phase timeline</a></li>
+          <li><a href="#walkthrough">Hands-on walkthrough</a></li>
+          <li><a href="#components">Key components</a></li>
+          <li><a href="#tests">Tests</a></li>
+          <li><a href="#proofs">Proof artefacts</a></li>
+          <li><a href="#glossary">Glossary</a></li>
+          <li><a href="#issues">Beads / GitHub issues</a></li>
+          <li><a href="#git-log">Git log</a></li>
+          <li><a href="#next">What's next</a></li>
+        </ol>
+      </nav>
+
+      <section id="delivered">
+        <h2>What this phase delivered</h2>
+        <p>
+          PSST now has a managed Pi control layer that sits on top of the Phase 1 Hub rather than replacing it.
+          The Hub still owns Known Session identity, selection state, and durable registry semantics, but it can now
+          also attach a Live Runtime, keep that runtime distinct from the persisted Session Registry row, and expose
+          runtime actions through the existing Unix-socket HTTP surface.
+        </p>
+        <p>
+          The main addition is <code>ManagedPiRuntimeService</code>. It tracks active runtime bindings in memory,
+          routes Continue through the required decision tree, reattaches event subscriptions after runtime replacement,
+          and updates the registry only with the metadata that belongs in a Known Session: current Pi session binding,
+          capabilities, and liveness. That keeps the ADR boundaries intact. Runtime reachability remains separate
+          from persisted session identity.
+        </p>
+        <p>
+          The phase also adds explicit backend modules instead of hiding Pi integration behind ad hoc helpers.
+          <code>SdkPiAdapter</code> maps official session APIs such as prompt, steer, follow-up, compact, and new/switch/fork/clone;
+          <code>RpcPiAdapter</code> speaks JSONL over a spawned <code>pi --mode rpc</code> process and consumes runtime events.
+          The factory module prefers the SDK path when a launcher is available and falls back to RPC otherwise.
+        </p>
+      </section>
+
+      <section id="why">
+        <h2>Why this phase exists</h2>
+        <p>
+          Phase 1 deliberately stopped at registry and Continue semantics. That was enough to prove that PSST could
+          remember Known Sessions and classify them without muddling identity, selection, and liveness, but it still left
+          one important gap: Continue did not actually reconnect or resume work. It only returned the next recommended action.
+        </p>
+        <p>
+          Phase 2 closes that gap without breaking the earlier contracts. The Hub now chooses reconnect when it already
+          owns a reachable Live Runtime, resume when persisted Pi material exists but the runtime is gone, and Start Fresh
+          when neither path exists. It also adds the public routes needed for real control: input delivery, runtime controls,
+          and event inspection. This is the contract that later self-registration, UI, and Telegram work will build on.
+        </p>
+      </section>
+
+      <section id="structure">
+        <h2>Repo structure</h2>
+        <pre class="tree">.
+├── AGENTS.md                              — repo-specific instructions, tracker rules, and phase workflow constraints
+├── CONTEXT.md                             — canonical vocabulary for Hub, Known Session, Live Runtime, Continue, and selection
+├── package.json                           — Node 22 package manifest and verification scripts
+├── docs/adr/                              — fixed architecture decisions, including SDK-first Pi integration
+│   ├── 0001-build-the-hub-daemon-first.md
+│   ├── 0002-keep-phase-1-to-registry-semantics.md
+│   ├── 0003-psst-owns-known-session-identity.md
+│   ├── 0004-use-sqlite-wal-for-the-registry.md
+│   ├── 0005-use-http-over-a-unix-socket.md
+│   └── 0006-use-sdk-first-pi-integration.md
+├── docs/manuals/
+│   ├── phase-one-manual.html              — Phase 1 onboarding manual
+│   └── phase-two-manual.html              — this manual
+├── src/
+│   ├── bin/psst.ts                        — CLI entrypoint over the public socket API
+│   ├── client.ts                          — Unix-socket JSON client used by the CLI
+│   ├── daemon.ts                          — daemon startup and route wiring, now including Phase 2 endpoints
+│   ├── managed-pi.ts                      — runtime tracking, Continue execution, event buffering, and control dispatch
+│   ├── pi-adapter-factory.ts              — SDK-first, RPC-second adapter selection
+│   ├── pi-rpc-adapter.ts                  — JSONL RPC backend for spawned Pi runtimes
+│   ├── pi-sdk-adapter.ts                  — wrapper around official SDK-style session APIs
+│   ├── registry.ts                        — SQLite registry and persistent Known Session model
+│   └── session-model.ts                   — shared session and capability types, now extended for control capabilities
+└── tests/
+    ├── e2e/cli.test.ts                    — public CLI flow validation
+    ├── integration/daemon-health.test.ts
+    ├── integration/daemon-lifecycle.test.ts
+    ├── integration/managed-pi.test.ts     — Continue execution, input/events, Start Fresh, and runtime replacement
+    ├── integration/pi-backends.test.ts    — SDK and RPC backend contract tests
+    ├── integration/session-registry.test.ts
+    └── support/socket-http.ts             — raw Unix-socket request helper for integration tests</pre>
+      </section>
+
+      <section id="mental-model">
+        <h2>Mental model</h2>
+        <ol class="invariants">
+          <li>A Known Session is still the durable unit. Live Runtime tracking is kept outside the Session Registry and only projects safe metadata back into it.</li>
+          <li>Continue is executable but still constrained: reconnect first, resume second, Start Fresh last. The Hub chooses; clients do not hard-code that tree.</li>
+          <li>Runtime replacement is normal. New, switch, fork, and clone may invalidate old session-bound objects, so event subscriptions must move with the new binding.</li>
+          <li>The input/control/event API is an extension of the Phase 1 socket contract, not a second transport surface. CLI and future adapters stay clients of the same HTTP API.</li>
+          <li>SDK-first means preference, not lock-in. When an official SDK launcher is available, PSST uses it. When stronger isolation or SDK absence calls for it, the RPC backend is the fallback.</li>
+        </ol>
+      </section>
+
+      <section id="architecture-section">
+        <h2>Architecture diagram</h2>
+        <p>
+          Phase 2 adds depth around runtime ownership without changing the Hub’s shape. The daemon still fronts the system;
+          the managed runtime service now mediates between the persistent registry and whichever Pi backend is active.
+        </p>
+        <canvas id="architecture" width="1200" height="560" aria-label="PSST phase two architecture diagram"></canvas>
+      </section>
+
+      <section id="timeline">
+        <h2>Phase timeline</h2>
+        <ul class="timeline">
+          <li><span class="phase-badge done">done</span> Phase 1: Hub registry and selection semantics</li>
+          <li><span class="phase-badge done">done</span> Phase 2: Managed Pi adapter</li>
+          <li><span class="phase-badge next">next</span> Phase 3: Optional Pi extension self-registration</li>
+          <li><span class="phase-badge next">next</span> Phase 4: Local web UI</li>
+          <li><span class="phase-badge next">next</span> Phase 5: Telegram adapter</li>
+          <li><span class="phase-badge next">next</span> Phase 6: Continue semantics, checkpointing, and lifecycle maturity</li>
+        </ul>
+      </section>
+
+      <section id="walkthrough">
+        <h2>Hands-on walkthrough</h2>
+
+        <div class="exercise">
+          <h3>Exercise 1 — install the toolchain</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm install</code></pre></div>
+          <p><strong>Expected outcome</strong> — dependencies install and the repo is ready for TypeScript, Vitest, and CLI execution.</p>
+          <p><strong>What this proves</strong> — the Phase 2 code is packaged as a real Node 22 project, not a design-only skeleton.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 2 — prove the full branch contract</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test && npm run typecheck && npm run build</code></pre></div>
+          <p><strong>Expected outcome</strong> — all 20 tests pass, TypeScript reports no errors, and the project builds successfully.</p>
+          <p><strong>What this proves</strong> — Phase 1 behavior still holds and the Phase 2 surfaces compile, verify, and emit build artefacts together.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 3 — watch Continue turn into a real resume path</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- --run tests/integration/managed-pi.test.ts --testNamePattern="resumes a Known Session"</code></pre></div>
+          <p><strong>Expected outcome</strong> — Vitest passes the targeted test that resumes a Known Session and flips its live status back to <code>live</code>.</p>
+          <p><strong>What this proves</strong> — Continue is no longer only advisory when a managed adapter is available; it can actually attach a replacement runtime.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 4 — observe input delivery and event capture on a live runtime</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- --run tests/integration/managed-pi.test.ts --testNamePattern="reconnects an attached runtime"</code></pre></div>
+          <p><strong>Expected outcome</strong> — the targeted test passes after sending prompt input, reconnecting the same runtime, and reading buffered <code>message_update</code> events.</p>
+          <p><strong>What this proves</strong> — the new <code>/input</code> and <code>/events</code> routes are wired through the managed runtime service rather than bypassing it.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 5 — poke the replacement edge case</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- --run tests/integration/managed-pi.test.ts --testNamePattern="replaces the active Pi session"</code></pre></div>
+          <p><strong>Expected outcome</strong> — the test passes after <code>control/new</code> updates the current Pi binding and old events stop appearing.</p>
+          <p><strong>What this proves</strong> — event subscriptions move cleanly to replacement session-bound objects and Phase 2 avoids the event-leak failure mode called out in the bead.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 6 — verify SDK-first and RPC-second backend behavior</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- --run tests/integration/pi-backends.test.ts</code></pre></div>
+          <p><strong>Expected outcome</strong> — the backend suite passes after proving SDK method mapping, RPC JSONL command names such as <code>follow_up</code>, and adapter selection preference.</p>
+          <p><strong>What this proves</strong> — both official-surface backends exist as explicit modules and the phase keeps the SDK-first, RPC-second policy encoded in code and tests.</p>
+        </div>
+      </section>
+
+      <section id="components">
+        <h2>Key components</h2>
+
+        <details open>
+          <summary><code>src/managed-pi.ts</code> — runtime tracking, Continue execution, and runtime replacement</summary>
+          <p>This module is the heart of the phase. It keeps runtime bindings out of the registry, executes the Continue tree, forwards input/control operations, and re-subscribes on replacement.</p>
+          <pre><code>if (binding) return { action: "reconnect", session: ... };
+if (!session.piSessionFile &amp;&amp; !session.capabilities.canResume) return { action: "start-fresh", session };
+const handle = await this.adapter.resumeSession(...);
+await this.attach(psstSessionId, handle);</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/pi-sdk-adapter.ts</code> — SDK backend wrapper</summary>
+          <p>The SDK backend is intentionally thin. It maps public session methods into the managed-handle interface and turns replacement sessions into new handles instead of exposing SDK objects upstream.</p>
+          <pre><code>case "follow-up":
+  return session.followUp(text);
+
+return {
+  replacement: result.session ? wrapSdkSession(result.session) : undefined,
+  state: result.state,
+};</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/pi-rpc-adapter.ts</code> — JSONL RPC backend</summary>
+          <p>This adapter spawns <code>pi --mode rpc --name "PSST:&lt;session-name&gt;"</code>, tracks pending requests by id, updates mutable runtime state from <code>get_state</code> and command responses, and forwards event lines to subscribers.</p>
+          <pre><code>const id = randomUUID();
+child.stdin.write(`${JSON.stringify({ command, id, ...payload })}\n`);
+if (message.id &amp;&amp; pending.has(message.id)) { ... }
+if (message.eventType &amp;&amp; message.occurredAt) { ... }</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/daemon.ts</code> — HTTP surface extension</summary>
+          <p>Phase 2 does not add a new server. It extends the existing daemon with the new runtime routes and keeps them on the same Unix-socket JSON API.</p>
+          <pre><code>POST /v1/sessions/:id/input
+POST /v1/sessions/:id/control/(abort|compact|new|switch|fork|clone)
+GET  /v1/sessions/:id/events
+POST /v1/sessions/:id/continue</code></pre>
+        </details>
+
+        <details>
+          <summary><code>tests/integration/managed-pi.test.ts</code> — Phase 2 behavioral proof</summary>
+          <p>The integration suite stays focused on observable behavior: resume, reconnect, Start Fresh, input delivery, event buffering, and subscription handoff after replacement.</p>
+          <pre><code>expect(continueResponse.body.action).toBe("resume");
+expect(reconnectResponse.body.action).toBe("reconnect");
+expect(eventsResponse.body.events).toEqual([{ eventType: "switch_session", ... }]);</code></pre>
+        </details>
+      </section>
+
+      <section id="tests">
+        <h2>Tests</h2>
+        <p>
+          Phase 2 keeps the integration-testing bias from Phase 1 and extends it into the Pi control layer. The new tests deliberately exercise the public daemon routes and the explicit backend modules rather than private helpers or internal mocks of the registry.
+        </p>
+        <div class="chart" aria-label="Test suite bar chart">
+          <div class="bar-row">
+            <div class="bar-label"><span>daemon-health</span><span>1 test</span></div>
+            <div class="bar-track"><div class="bar" data-width="18"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>daemon-lifecycle</span><span>4 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="58"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>session-registry</span><span>5 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="72"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>managed-pi</span><span>4 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="58"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>pi-backends</span><span>3 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="44"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>cli-e2e</span><span>3 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="44"></div></div>
+          </div>
+        </div>
+        <details open>
+          <summary>Exact test names</summary>
+          <pre><code>daemon-health
+- serves health over a Unix socket
+
+daemon-lifecycle
+- does not deduplicate by working directory and machine alone
+- updates liveness on heartbeat and persists selection across restart
+- cleans up a stale socket file and prevents a second live daemon
+- serves concurrent readers against the same SQLite registry
+
+session-registry
+- registers a Known Session with a PSST-owned identity and lists it
+- applies duplicate matching priority and keeps the Known Session identity stable
+- preserves existing metadata when a duplicate registration omits optional fields
+- persists selection lifecycle by client scope
+- persists sessions across daemon restarts and computes Continue from liveness
+
+managed-pi
+- resumes a Known Session when Continue has persisted Pi material but no live runtime
+- reconnects an attached runtime, delivers input, and exposes runtime events
+- returns Start Fresh when Continue has neither a live runtime nor resumable Pi material
+- replaces the active Pi session on control/new and drops old event subscriptions
+
+pi-backends
+- maps SDK session APIs to managed session operations and replacement handles
+- spawns RPC mode, emits JSONL commands, and forwards runtime events
+- prefers the SDK backend and falls back to RPC when no SDK launcher is supplied
+
+cli-e2e
+- reports daemon status
+- starts the daemon from the CLI entrypoint
+- registers, selects, inspects, continues, and unselects a Known Session</code></pre>
+        </details>
+      </section>
+
+      <section id="proofs">
+        <h2>Proof artefacts</h2>
+        <table>
+          <thead>
+            <tr><th>Artefact</th><th>What it proves</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>src/managed-pi.ts</code></td><td>Live Runtime tracking, Continue execution, control dispatch, and subscription handoff live outside the durable Session Registry.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>src/pi-sdk-adapter.ts</code></td><td>PSST has an SDK-first Pi backend that wraps official session-style APIs into the managed runtime contract.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>src/pi-rpc-adapter.ts</code></td><td>PSST has an RPC fallback backend that sends structured JSONL commands and consumes runtime events.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>tests/integration/managed-pi.test.ts</code></td><td>Resume, reconnect, Start Fresh, input delivery, event inspection, and control/new replacement are executable and repeatable.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>tests/integration/pi-backends.test.ts</code></td><td>SDK method mapping, RPC command naming, event forwarding, and backend preference are pinned by tests.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>package.json</code></td><td>The project’s real verification surface remains <code>npm test</code>, <code>npm run typecheck</code>, and <code>npm run build</code>.</td><td><span class="phase-badge done">verified</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="glossary">
+        <h2>Glossary</h2>
+        <input class="glossary-search" id="glossary-search" type="search" placeholder="Search glossary terms" />
+        <div class="glossary-grid" id="glossary-grid">
+          <article class="glossary-card" data-term="hub"> <strong>Hub</strong><p>The long-running PSST service that owns discovery, routing, the Session Registry, and client-facing selection state.</p></article>
+          <article class="glossary-card" data-term="known session"> <strong>Known Session</strong><p>A Pi Session that is running now or has previously been seen by the Hub.</p></article>
+          <article class="glossary-card" data-term="live runtime"> <strong>Live Runtime</strong><p>The currently reachable Pi control path attached to a Known Session.</p></article>
+          <article class="glossary-card" data-term="managed pi adapter"> <strong>Managed Pi adapter</strong><p>The Phase 2 layer that turns Pi runtimes and session controls into a Hub-owned contract.</p></article>
+          <article class="glossary-card" data-term="psst session id"> <strong>PSST Session ID</strong><p>The Hub-owned durable identity for registry, selection, and Continue actions.</p></article>
+          <article class="glossary-card" data-term="pi session id"> <strong>Pi Session ID</strong><p>An external identity hint that may change across replacement and is not the primary PSST handle.</p></article>
+          <article class="glossary-card" data-term="continue"> <strong>Continue</strong><p>The user-facing action that chooses reconnect, resume, or Start Fresh according to runtime reachability and persisted material.</p></article>
+          <article class="glossary-card" data-term="reconnect"> <strong>Reconnect</strong><p>Restore control to an already reachable Live Runtime.</p></article>
+          <article class="glossary-card" data-term="resume"> <strong>Resume</strong><p>Create a replacement runtime from persisted Pi material when the old runtime is gone.</p></article>
+          <article class="glossary-card" data-term="start fresh"> <strong>Start Fresh</strong><p>Create or request a new Pi Session when there is no reachable runtime and nothing resumable.</p></article>
+          <article class="glossary-card" data-term="sdk backend"> <strong>SDK backend</strong><p>The preferred official integration path that exposes prompt, steer, follow-up, and control operations through session objects.</p></article>
+          <article class="glossary-card" data-term="rpc backend"> <strong>RPC backend</strong><p>The fallback backend that spawns Pi in RPC mode and exchanges JSONL commands and events.</p></article>
+        </div>
+      </section>
+
+      <section id="issues">
+        <h2>Beads / GitHub issues</h2>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Title</th><th>State</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>psst-beg.1</code></td><td>Phase 1: Hub registry and selection semantics</td><td><span class="phase-badge done">done</span></td><td>The stable base this phase extends without changing the transport, identity, or selection model.</td></tr>
+            <tr><td><code>psst-beg.2</code></td><td>Phase 2: Managed Pi adapter</td><td><span class="phase-badge progress">implemented on branch</span></td><td>Adds runtime control, backend abstraction, new endpoints, and executable Continue behavior.</td></tr>
+            <tr><td><code>gh-81</code></td><td>Phase 2: Managed Pi adapter</td><td><span class="phase-badge progress">open</span></td><td>The linked source issue that defines the Phase 2 scope, API additions, backend order, and required tests.</td></tr>
+            <tr><td><code>psst-beg.3</code></td><td>Phase 3: Optional Pi extension self-registration</td><td><span class="phase-badge next">next</span></td><td>Lets Pi-launched sessions self-register and enrich the registry safely.</td></tr>
+            <tr><td><code>psst-beg.6</code></td><td>Phase 6: Continue semantics, checkpointing, and lifecycle maturity</td><td><span class="phase-badge next">next</span></td><td>Builds on the new runtime layer to deepen lifecycle recovery and checkpoint behavior.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="git-log">
+        <h2>Git log</h2>
+        <pre><code>b28a228 feat: implement phase 2 managed pi adapter
+9622994 chore: record phase 1 completion in beads
+33cc3c7 docs: add phase manual — phase-1-hub-registry-and-selection-semantics
+2d1461c feat: implement phase 1 hub registry and cli
+07a3ec0 bd init: initialize beads issue tracking
+9f87432 Add PSST ADRs and agent guidance
+6fc6fd8 refactor: goodbye v1
+c7d8cb5 Codex/lock stack guidelines (#6)
+6139083 Close all beads
+0ff78a0 feat: pass extra args to claude on psst resume
+f7dab05 fix: clarify exit prompt and show psst resume command
+9782cfb fix: release stdin before prompting on exit, install to ~/bin
+0110c4f bd init: initialize beads issue tracking
+d1a0d30 chore: remove beads integration (#5)
+0f44117 Orphan Session Recovery (008) (#4)
+9abe721 fix(007): Use screen for TTY and support PSST_SESSION_NAME
+36a374f feat(007): Auto-spawn Claude session for non-reply messages
+d687cea Merge pull request #3 from cannontrodder/006-telegram-response-routing
+849adb4 docs: Add oneshot decision log for feature 006
+f063d74 Implement: Telegram Response Routing (006)</code></pre>
+      </section>
+
+      <section id="next">
+        <h2>What's next</h2>
+        <p>
+          Phase 3 should build on this runtime layer without weakening it. The next step is optional Pi extension self-registration so Pi-launched sessions can announce themselves safely while the Hub keeps PSST-owned identity primary. The gate before that work begins is simple: keep the new managed runtime service as the place where Live Runtime logic lives, keep the registry durable and runtime-agnostic, and avoid smuggling later UI or Telegram concerns back into the core transport and selection contract.
+        </p>
+      </section>
+
+      <footer>
+        PSST phase manual generated on branch <code>codex/022-psst-rewrite-ready</code> for scope <code>phase-2-managed-pi-adapter</code>.
+      </footer>
+    </main>
+    <script>
+      const canvas = document.getElementById("architecture");
+      const context = canvas.getContext("2d");
+      const boxes = [
+        { x: 50, y: 70, w: 250, h: 92, label: "CLI / future adapters" },
+        { x: 365, y: 70, w: 260, h: 92, label: "Hub daemon (daemon.ts)" },
+        { x: 690, y: 70, w: 300, h: 92, label: "ManagedPiRuntimeService" },
+        { x: 140, y: 300, w: 270, h: 120, label: "Session Registry (registry.ts)" },
+        { x: 470, y: 300, w: 240, h: 120, label: "SDK backend" },
+        { x: 780, y: 300, w: 240, h: 120, label: "RPC backend" },
+        { x: 420, y: 470, w: 360, h: 64, label: "Pi runtimes / session-bound objects" }
+      ];
+
+      function drawBox(box) {
+        context.fillStyle = "#fffdf8";
+        context.strokeStyle = "#c9bda8";
+        context.lineWidth = 2;
+        context.fillRect(box.x, box.y, box.w, box.h);
+        context.strokeRect(box.x, box.y, box.w, box.h);
+        context.fillStyle = "#161616";
+        context.font = "26px Georgia";
+        context.textAlign = "center";
+        context.fillText(box.label, box.x + box.w / 2, box.y + box.h / 2 + 8, box.w - 28);
+      }
+
+      function arrow(x1, y1, x2, y2, label) {
+        context.strokeStyle = "#8a5c28";
+        context.fillStyle = "#8a5c28";
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.stroke();
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        context.beginPath();
+        context.moveTo(x2, y2);
+        context.lineTo(x2 - 12 * Math.cos(angle - Math.PI / 6), y2 - 12 * Math.sin(angle - Math.PI / 6));
+        context.lineTo(x2 - 12 * Math.cos(angle + Math.PI / 6), y2 - 12 * Math.sin(angle + Math.PI / 6));
+        context.closePath();
+        context.fill();
+        context.font = "20px Georgia";
+        context.fillText(label, (x1 + x2) / 2, (y1 + y2) / 2 - 10);
+      }
+
+      boxes.forEach(drawBox);
+      arrow(300, 116, 365, 116, "HTTP JSON");
+      arrow(625, 116, 690, 116, "runtime routes");
+      arrow(530, 162, 270, 300, "update known-session metadata");
+      arrow(770, 162, 590, 300, "SDK-first");
+      arrow(865, 162, 900, 300, "RPC-second");
+      arrow(585, 420, 585, 470, "events / control / replacement");
+      arrow(900, 420, 680, 470, "spawned RPC runtime");
+
+      document.querySelectorAll(".bar").forEach((bar) => {
+        requestAnimationFrame(() => {
+          bar.style.width = `${bar.dataset.width}%`;
+        });
+      });
+
+      document.querySelectorAll(".copy-button").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const code = button.nextElementSibling.innerText;
+          await navigator.clipboard.writeText(code);
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => { button.textContent = previous; }, 1200);
+        });
+      });
+
+      const search = document.getElementById("glossary-search");
+      const cards = Array.from(document.querySelectorAll(".glossary-card"));
+      search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
+        cards.forEach((card) => {
+          card.style.display = card.dataset.term.includes(query) ? "" : "none";
+        });
+      });
+    </script>
+  </body>
+</html>

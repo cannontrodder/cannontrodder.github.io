@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<!-- MANUAL SCOPE
+     Project:  PSST
+     Branch:   codex/022-psst-rewrite-ready
+     Scope:    phase-3-optional-pi-extension-self-registration
+     Covers:   Optional Pi self-registration, persisted PSST linkage, metadata enrichment, replacement-safe identity carryover, and TUI status messaging.
+     Built:    2026-06-20
+     Rebuild:  /flow-progress-manual  (then choose scope: phase-3-optional-pi-extension-self-registration)
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>PSST Phase Three Manual</title>
+    <style>
+      :root {
+        --ink: #161616;
+        --mid: #5b5b5b;
+        --faint: #767676;
+        --rule: #d8d2c8;
+        --bg: #fbf8f1;
+        --code-bg: #f1ece2;
+        --accent: #a2602c;
+        --good: #2f6b3b;
+        --warn: #8f5b00;
+        --next: #6a4fb3;
+        --max: 70ch;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: auto; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.6;
+      }
+
+      main {
+        width: min(100%, 78rem);
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+      }
+
+      h1, h2, h3 {
+        line-height: 1.2;
+        font-weight: 600;
+        margin: 0 0 0.8rem;
+      }
+
+      h1 { font-size: clamp(2.6rem, 5vw, 4.2rem); }
+      h2 {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        font-size: 1.7rem;
+      }
+
+      p, li, td, th, figcaption {
+        max-width: var(--max);
+        font-size: 1.05rem;
+      }
+
+      a {
+        color: var(--ink);
+        text-decoration: underline;
+      }
+
+      .hero {
+        padding: 1rem 0 1.75rem;
+      }
+
+      .subtitle {
+        margin: 0;
+        max-width: 62ch;
+        font-size: 1.18rem;
+        color: var(--mid);
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0 0;
+      }
+
+      .badge,
+      .phase-badge {
+        display: inline-block;
+        padding: 0.22rem 0.6rem;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        font-size: 0.9rem;
+        color: var(--mid);
+        background: #fffaf1;
+      }
+
+      .phase-badge.done { border-color: #b4ceb9; color: var(--good); }
+      .phase-badge.progress { border-color: #d8c293; color: var(--warn); }
+      .phase-badge.next { border-color: #cbbce8; color: var(--next); }
+
+      nav.toc {
+        margin: 1.5rem 0 2rem;
+        padding: 1rem 1.15rem;
+        border: 1px solid var(--rule);
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      nav.toc ol {
+        margin: 0.75rem 0 0;
+        padding-left: 1.25rem;
+      }
+
+      .tree,
+      pre,
+      code,
+      .mono {
+        font-family: "Courier New", Courier, monospace;
+      }
+
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--rule);
+        padding: 0.9rem;
+        overflow-x: auto;
+        position: relative;
+        white-space: pre-wrap;
+      }
+
+      .copy-wrap {
+        position: relative;
+        max-width: var(--max);
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 0.6rem;
+        right: 0.6rem;
+        border: 1px solid var(--rule);
+        background: #fffaf1;
+        color: var(--mid);
+        font: inherit;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+      }
+
+      th, td {
+        border-top: 1px solid var(--rule);
+        padding: 0.65rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .invariants li,
+      .timeline li {
+        margin-bottom: 0.6rem;
+      }
+
+      #architecture {
+        width: 100%;
+        max-width: 1200px;
+        border: 1px solid var(--rule);
+        background: #fffdf9;
+        display: block;
+      }
+
+      .exercise {
+        max-width: var(--max);
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.65);
+        padding: 1rem 1rem 1.2rem;
+        margin: 1rem 0;
+      }
+
+      .exercise h3 {
+        margin-bottom: 0.45rem;
+      }
+
+      details {
+        max-width: var(--max);
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.55);
+        padding: 0.8rem 1rem;
+        margin: 0.8rem 0;
+      }
+
+      details summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .chart {
+        max-width: var(--max);
+        margin: 1rem 0;
+      }
+
+      .bar-row {
+        margin: 0.9rem 0;
+      }
+
+      .bar-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.98rem;
+      }
+
+      .bar-track {
+        height: 14px;
+        background: #efe7da;
+        border: 1px solid var(--rule);
+        overflow: hidden;
+      }
+
+      .bar {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #c8894b, #8a5c28);
+        transition: width 900ms ease-out;
+      }
+
+      .glossary-search {
+        width: min(100%, 28rem);
+        padding: 0.65rem 0.75rem;
+        border: 1px solid var(--rule);
+        background: #fffdf9;
+        font: inherit;
+      }
+
+      .glossary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        gap: 0.85rem;
+        margin-top: 1rem;
+      }
+
+      .glossary-card {
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.6);
+        padding: 0.9rem;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        color: var(--faint);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" id="hero">
+        <h1>PSST</h1>
+        <p class="subtitle">
+          Phase 3 adds an optional Pi extension that lets directly launched Pi Sessions self-register
+          with the Hub, persist PSST linkage into session JSONL, enrich Known Session metadata, and show
+          safe status and routing guidance in the Pi TUI without turning the extension into the control plane.
+        </p>
+        <div class="badges">
+          <span class="badge">Node 22</span>
+          <span class="badge">TypeScript 5.8</span>
+          <span class="badge">SQLite WAL</span>
+          <span class="badge">Vitest</span>
+          <span class="badge">Branch: codex/022-psst-rewrite-ready</span>
+          <span class="badge">Scope: phase-3-optional-pi-extension-self-registration</span>
+        </div>
+      </section>
+
+      <nav class="toc" aria-labelledby="toc-title">
+        <strong id="toc-title">Table of contents</strong>
+        <ol>
+          <li><a href="#delivered">What this phase delivered</a></li>
+          <li><a href="#why">Why this phase exists</a></li>
+          <li><a href="#structure">Repo structure</a></li>
+          <li><a href="#mental-model">Mental model</a></li>
+          <li><a href="#architecture-section">Architecture diagram</a></li>
+          <li><a href="#timeline">Phase timeline</a></li>
+          <li><a href="#walkthrough">Hands-on walkthrough</a></li>
+          <li><a href="#components">Key components</a></li>
+          <li><a href="#tests">Tests</a></li>
+          <li><a href="#proofs">Proof artefacts</a></li>
+          <li><a href="#glossary">Glossary</a></li>
+          <li><a href="#issues">Beads / GitHub issues</a></li>
+          <li><a href="#git-log">Git log</a></li>
+          <li><a href="#next">What's next</a></li>
+        </ol>
+      </nav>
+
+      <section id="delivered">
+        <h2>What this phase delivered</h2>
+        <p>
+          PSST can now learn about Pi Sessions that were launched directly by the user inside Pi rather than only
+          through the managed adapter path. The new <code>psst-pi-extension</code> module performs a narrow
+          <code>session_start</code>-time registration against the existing Hub API, carries forward any prior
+          PSST Session ID it finds in the session JSONL, and leaves the Hub in charge of Known Session identity,
+          selection, and Continue semantics.
+        </p>
+        <p>
+          The extension enriches the registry only with metadata that belongs in a Known Session row: working directory,
+          Pi session file, Pi Session ID, Pi Session Name, model, thinking level, and a deliberately safe capability
+          subset. It refuses to advertise control powers such as input delivery or abort just because the extension is
+          loaded. That preserves the ADR and glossary boundary between visibility and controllability.
+        </p>
+        <p>
+          Two more behaviors make the phase operational rather than aspirational. Successful registration writes a
+          <code>psst.linkage</code> entry back into the Pi session JSONL using an <code>appendEntry</code>-style seam,
+          and the module exposes a TUI status message type plus renderer so Pi can explain whether the Hub linked the
+          session, carried the identity into a replacement runtime, or stayed offline without breaking the user’s work.
+        </p>
+      </section>
+
+      <section id="why">
+        <h2>Why this phase exists</h2>
+        <p>
+          Phase 2 gave PSST a managed adapter for runtimes that the Hub starts or resumes itself, but it still left a
+          practical blind spot: a user can open Pi directly, start work, and never pass through the managed launcher at all.
+          Without a narrow self-registration bridge, those live Pi Sessions stay invisible to the Hub until some later
+          manual step recreates their metadata.
+        </p>
+        <p>
+          Phase 3 closes that gap without violating the Phase 1 or Phase 2 contracts. The extension is optional, best-effort,
+          and metadata-oriented. When the Hub is reachable it self-registers and persists the resulting PSST linkage; when the
+          Hub is absent it surfaces an offline status and leaves the Pi Session local. This gives later UI and Telegram phases
+          richer visibility without confusing a Pi plugin with the Hub itself.
+        </p>
+      </section>
+
+      <section id="structure">
+        <h2>Repo structure</h2>
+        <pre class="tree">.
+├── AGENTS.md                              — repo-specific instructions, tracker rules, and phase workflow constraints
+├── CONTEXT.md                             — canonical vocabulary for Hub, Known Session, Live Runtime, Continue, and selection
+├── package.json                           — Node 22 package manifest and verification scripts
+├── docs/adr/                              — fixed architecture decisions, including SDK-first Pi integration
+│   ├── 0001-build-the-hub-daemon-first.md
+│   ├── 0002-keep-phase-1-to-registry-semantics.md
+│   ├── 0003-psst-owns-known-session-identity.md
+│   ├── 0004-use-sqlite-wal-for-the-registry.md
+│   ├── 0005-use-http-over-a-unix-socket.md
+│   └── 0006-use-sdk-first-pi-integration.md
+├── docs/manuals/
+│   ├── phase-one-manual.html              — Phase 1 onboarding manual
+│   ├── phase-two-manual.html              — Phase 2 onboarding manual
+│   └── phase-three-manual.html            — this manual
+├── src/
+│   ├── bin/psst.ts                        — CLI entrypoint over the public socket API
+│   ├── client.ts                          — Unix-socket JSON client used by the CLI
+│   ├── daemon.ts                          — daemon startup and route wiring over the stable Unix-socket HTTP surface
+│   ├── managed-pi.ts                      — managed runtime tracking from Phase 2, still separate from durable identity
+│   ├── pi-adapter-factory.ts              — SDK-first, RPC-second adapter selection
+│   ├── pi-rpc-adapter.ts                  — JSONL RPC backend for spawned Pi runtimes
+│   ├── pi-sdk-adapter.ts                  — wrapper around official SDK-style session APIs
+│   ├── psst-pi-extension/
+│   │   └── index.ts                       — Phase 3 optional self-registration, linkage persistence, and TUI status renderer
+│   ├── registry.ts                        — SQLite registry plus the Phase 3 metadata migration for model and thinking level
+│   └── session-model.ts                   — shared Known Session types, now including model and thinking-level metadata
+└── tests/
+    ├── e2e/cli.test.ts                    — public CLI flow validation
+    ├── integration/daemon-health.test.ts
+    ├── integration/daemon-lifecycle.test.ts
+    ├── integration/managed-pi.test.ts     — Continue execution, input/events, Start Fresh, and runtime replacement
+    ├── integration/pi-backends.test.ts    — SDK and RPC backend contract tests
+    ├── integration/pi-extension.test.ts   — self-registration, offline fallback, linkage persistence, and replacement safety
+    ├── integration/session-registry.test.ts — duplicate policy, persistence, and registry migration coverage
+    └── support/socket-http.ts             — raw Unix-socket request helper for integration tests</pre>
+      </section>
+
+      <section id="mental-model">
+        <h2>Mental model</h2>
+        <ol class="invariants">
+          <li>The Hub still owns Known Session identity. The extension may reuse a PSST Session ID it discovers, but it does not mint a second identity system.</li>
+          <li>Self-registration is optional and best-effort. If the Hub is absent, the Pi Session must continue locally and surface an offline status instead of failing startup.</li>
+          <li><code>psst.linkage</code> is the carry-forward seam. Persisting it into session JSONL lets replacement session_start flows keep the same Known Session rather than creating duplicates.</li>
+          <li>Metadata enrichment is additive, not controlling. Working directory, session file, model, thinking level, and safe capability hints can be projected into the registry without implying that the extension can steer or abort work.</li>
+          <li>Phase 2 remains the primary control path. Phase 3 gives PSST richer visibility and user guidance, not a rival runtime-control plane.</li>
+        </ol>
+      </section>
+
+      <section id="architecture-section">
+        <h2>Architecture diagram</h2>
+        <p>
+          Phase 3 inserts a small bridge inside the Pi Session. The Pi extension reads any prior linkage from session JSONL,
+          registers with the same Hub API the CLI already uses, persists the resulting PSST Session ID back into JSONL, and
+          renders a status message inside Pi so the user can see what PSST learned without confusing the extension for the Hub.
+        </p>
+        <canvas id="architecture" width="1200" height="560" aria-label="PSST phase three architecture diagram"></canvas>
+      </section>
+
+      <section id="timeline">
+        <h2>Phase timeline</h2>
+        <ul class="timeline">
+          <li><span class="phase-badge done">done</span> Phase 1: Hub registry and selection semantics</li>
+          <li><span class="phase-badge done">done</span> Phase 2: Managed Pi adapter</li>
+          <li><span class="phase-badge done">done</span> Phase 3: Optional Pi extension self-registration</li>
+          <li><span class="phase-badge next">next</span> Phase 4: Local web UI</li>
+          <li><span class="phase-badge next">next</span> Phase 5: Telegram adapter</li>
+          <li><span class="phase-badge next">next</span> Phase 6: Continue semantics, checkpointing, and lifecycle maturity</li>
+        </ul>
+      </section>
+
+      <section id="walkthrough">
+        <h2>Hands-on walkthrough</h2>
+
+        <div class="exercise">
+          <h3>Exercise 1 — install the toolchain</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm install</code></pre></div>
+          <p><strong>Expected outcome</strong> — dependencies install and the repo is ready for TypeScript, Vitest, the Hub daemon, and the Pi extension module.</p>
+          <p><strong>What this proves</strong> — Phase 3 is implemented in the real Node 22 project rather than as pseudo-code or a separate unpublished sketch.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 2 — verify the extension’s public behavior</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- tests/integration/pi-extension.test.ts</code></pre></div>
+          <p><strong>Expected outcome</strong> — Vitest passes the three Phase 3 behaviors: successful self-registration, offline fallback when the Hub is absent, and identity-stable replacement session_start flows.</p>
+          <p><strong>What this proves</strong> — the optional Pi bridge is real, bounded, and safe on its own public interface.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 3 — prove the registry upgrade path</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- tests/integration/session-registry.test.ts</code></pre></div>
+          <p><strong>Expected outcome</strong> — the session-registry suite passes, including the migration test that starts from a Phase 2 <code>001_init</code> database and accepts Phase 3 metadata.</p>
+          <p><strong>What this proves</strong> — Phase 3 lands safely on top of existing Hub registries rather than only on brand-new temp databases.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 4 — watch a live self-registration end to end</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>node --import tsx --eval 'import { mkdtemp, rm, writeFile } from "node:fs/promises"; import { tmpdir } from "node:os"; import { join } from "node:path"; import { startHubDaemon } from "./src/daemon.ts"; import { createPsstPiExtension, renderPsstTuiStatusMessage } from "./src/psst-pi-extension/index.ts"; const root = await mkdtemp(join(tmpdir(), "psst-phase3-demo-")); const daemon = await startHubDaemon({ dataDirectory: join(root, "data"), runtimeDirectory: join(root, "run") }); const sessionFile = join(root, "session.jsonl"); await writeFile(sessionFile, "", "utf8"); const extension = createPsstPiExtension({ socketPath: daemon.socketPath }); const result = await extension.onSessionStart({ model: "gpt-5", sessionFile, sessionId: "pi-demo", sessionName: "Demo from Pi", thinkingLevel: "high", workingDirectory: "/projects/demo" }); console.log(renderPsstTuiStatusMessage(result.status)); await daemon.close(); await rm(root, { recursive: true, force: true });'</code></pre></div>
+          <p><strong>Expected outcome</strong> — stdout prints a “Registered with PSST” status line that includes the returned PSST Session ID and routing guidance.</p>
+          <p><strong>What this proves</strong> — a directly launched Pi Session can register through the stable Hub socket API without going through the managed launcher.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 5 — poke the offline edge case</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>node --import tsx --eval 'import { mkdtemp, rm, writeFile } from "node:fs/promises"; import { tmpdir } from "node:os"; import { join } from "node:path"; import { createPsstPiExtension, renderPsstTuiStatusMessage } from "./src/psst-pi-extension/index.ts"; const root = await mkdtemp(join(tmpdir(), "psst-phase3-offline-")); const sessionFile = join(root, "session.jsonl"); await writeFile(sessionFile, "", "utf8"); const extension = createPsstPiExtension({ socketPath: join(root, "missing.sock") }); const result = await extension.onSessionStart({ sessionFile, sessionId: "pi-offline", sessionName: "Offline from Pi", workingDirectory: "/projects/offline" }); console.log(renderPsstTuiStatusMessage(result.status)); await rm(root, { recursive: true, force: true });'</code></pre></div>
+          <p><strong>Expected outcome</strong> — stdout prints a “Hub unavailable” status without throwing and without creating a linkage entry.</p>
+          <p><strong>What this proves</strong> — the extension is optional and best-effort; absence of the Hub does not break a locally running Pi Session.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 6 — verify the whole Phase 3 branch contract</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test && npm run typecheck && npm run build</code></pre></div>
+          <p><strong>Expected outcome</strong> — all 24 tests pass, TypeScript reports no errors, and the project builds successfully.</p>
+          <p><strong>What this proves</strong> — the new extension and metadata migration fit cleanly into the earlier Hub and managed-adapter work instead of breaking established contracts.</p>
+        </div>
+      </section>
+
+      <section id="components">
+        <h2>Key components</h2>
+
+        <details open>
+          <summary><code>src/psst-pi-extension/index.ts</code> — Phase 3 self-registration bridge</summary>
+          <p>This module owns the new behavior for directly launched Pi Sessions. It discovers prior linkage, registers against the Hub, persists a <code>psst.linkage</code> entry, and renders the TUI status message.</p>
+          <pre><code>const carriedLinkage = currentLinkage ?? await readLatestLinkage(...);
+const response = await client.post("/v1/sessions/register", registerInput);
+if (shouldPersist) await appendEntry(input.sessionFile, nextLinkage);</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/registry.ts</code> — durable metadata and migration surface</summary>
+          <p>The registry remains the source of durable Known Session rows. Phase 3 adds a discrete migration for <code>model</code> and <code>thinking_level</code> while keeping Phase 1 identity and duplicate matching intact.</p>
+          <pre><code>const migrations = [
+  { name: "001_init", sql: MIGRATION_001 },
+  { name: "002_session_metadata", sql: MIGRATION_002 },
+];</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/session-model.ts</code> — Phase 3 Known Session shape</summary>
+          <p>The shared session type now carries the extra metadata that the extension can provide safely: <code>model</code> and <code>thinkingLevel</code> alongside the existing Session Registry fields.</p>
+          <pre><code>export interface SessionRecord {
+  model: string | null;
+  thinkingLevel: string | null;
+  ...
+}</code></pre>
+        </details>
+
+        <details>
+          <summary><code>tests/integration/pi-extension.test.ts</code> — behavioral proof for the optional bridge</summary>
+          <p>This suite stays at the public seam: it starts a real daemon, drives the extension through <code>onSessionStart</code>, and verifies linkage persistence, offline fallback, and replacement identity carryover.</p>
+          <pre><code>expect(result.status.state).toBe("registered");
+expect(renderPsstTuiStatusMessage(result.status)).toContain("Registered with PSST");
+expect(replacement.session?.psstSessionId).toBe(first.session?.psstSessionId);</code></pre>
+        </details>
+
+        <details>
+          <summary><code>tests/integration/session-registry.test.ts</code> — upgrade and duplicate-safety proof</summary>
+          <p>The registry suite now proves that a Phase 2 database upgrades into Phase 3 cleanly and that enriched metadata still respects PSST-owned identity rules.</p>
+          <pre><code>expect(registerResponse.body.session).toMatchObject({
+  model: "gpt-5",
+  thinkingLevel: "high",
+});</code></pre>
+        </details>
+      </section>
+
+      <section id="tests">
+        <h2>Tests</h2>
+        <p>
+          Phase 3 keeps the same integration-style testing bias. The extension is verified through its public <code>onSessionStart</code> seam and the daemon’s public registration route, while the registry suite now proves that an upgraded Phase 2 database accepts the new metadata columns cleanly.
+        </p>
+        <div class="chart" aria-label="Test suite bar chart">
+          <div class="bar-row">
+            <div class="bar-label"><span>daemon-health</span><span>1 test</span></div>
+            <div class="bar-track"><div class="bar" data-width="18"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>daemon-lifecycle</span><span>4 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="58"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>session-registry</span><span>6 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="74"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>managed-pi</span><span>4 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="58"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>pi-backends</span><span>3 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="44"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>pi-extension</span><span>3 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="44"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"><span>cli-e2e</span><span>3 tests</span></div>
+            <div class="bar-track"><div class="bar" data-width="44"></div></div>
+          </div>
+        </div>
+        <details open>
+          <summary>Exact test names</summary>
+          <pre><code>daemon-health
+- serves health over a Unix socket
+
+daemon-lifecycle
+- does not deduplicate by working directory and machine alone
+- updates liveness on heartbeat and persists selection across restart
+- cleans up a stale socket file and prevents a second live daemon
+- serves concurrent readers against the same SQLite registry
+
+session-registry
+- registers a Known Session with a PSST-owned identity and lists it
+- applies duplicate matching priority and keeps the Known Session identity stable
+- preserves existing metadata when a duplicate registration omits optional fields
+- persists selection lifecycle by client scope
+- persists sessions across daemon restarts and computes Continue from liveness
+- upgrades a Phase 2 registry and accepts Phase 3 session metadata
+
+managed-pi
+- resumes a Known Session when Continue has persisted Pi material but no live runtime
+- reconnects an attached runtime, delivers input, and exposes runtime events
+- returns Start Fresh when Continue has neither a live runtime nor resumable Pi material
+- replaces the active Pi session on control/new and drops old event subscriptions
+
+pi-backends
+- maps SDK session APIs to managed session operations and replacement handles
+- spawns RPC mode, emits JSONL commands, and forwards runtime events
+- prefers the SDK backend and falls back to RPC when no SDK launcher is supplied
+
+pi-extension
+- self-registers a directly launched Pi Session, enriches Hub metadata, and persists PSST linkage
+- returns an offline TUI status without mutating the session file when the Hub is absent
+- keeps the PSST Session identity stable across replacement session_start flows
+
+cli-e2e
+- reports daemon status
+- starts the daemon from the CLI entrypoint
+- registers, selects, inspects, continues, and unselects a Known Session</code></pre>
+        </details>
+      </section>
+
+      <section id="proofs">
+        <h2>Proof artefacts</h2>
+        <table>
+          <thead>
+            <tr><th>Artefact</th><th>What it proves</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>src/psst-pi-extension/index.ts</code></td><td>PSST has a narrow optional Pi bridge for self-registration, persisted linkage, and TUI-safe status rendering.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>src/registry.ts</code></td><td>Phase 3 metadata lands through an explicit SQLite migration rather than a silent schema fork.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>src/session-model.ts</code></td><td>Known Sessions can now store model and thinking-level metadata without changing PSST-owned identity semantics.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>tests/integration/pi-extension.test.ts</code></td><td>Registration, offline fallback, linkage persistence, and replacement-safe identity carryover are executable and repeatable.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>tests/integration/session-registry.test.ts</code></td><td>Existing Phase 2 registries upgrade cleanly and accept the new Phase 3 metadata.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>package.json</code></td><td>The branch still verifies through <code>npm test</code>, <code>npm run typecheck</code>, and <code>npm run build</code>.</td><td><span class="phase-badge done">verified</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="glossary">
+        <h2>Glossary</h2>
+        <input class="glossary-search" id="glossary-search" type="search" placeholder="Search glossary terms" />
+        <div class="glossary-grid" id="glossary-grid">
+          <article class="glossary-card" data-term="hub"> <strong>Hub</strong><p>The long-running PSST service that owns discovery, routing, the Session Registry, and client-facing selection state.</p></article>
+          <article class="glossary-card" data-term="known session"> <strong>Known Session</strong><p>A Pi Session that is running now or has previously been seen by the Hub.</p></article>
+          <article class="glossary-card" data-term="pi extension"> <strong>Pi extension</strong><p>The optional Phase 3 bridge loaded inside a Pi Session that can self-register with the Hub and surface PSST status in the TUI.</p></article>
+          <article class="glossary-card" data-term="session registry"> <strong>Session Registry</strong><p>The Hub’s durable store of Known Sessions and their selected metadata.</p></article>
+          <article class="glossary-card" data-term="psst session id"> <strong>PSST Session ID</strong><p>The Hub-owned durable identity for registry, selection, and Continue actions.</p></article>
+          <article class="glossary-card" data-term="pi session id"> <strong>Pi Session ID</strong><p>An external identity hint that may change across replacement and is not the primary PSST handle.</p></article>
+          <article class="glossary-card" data-term="pi session name"> <strong>Pi Session Name</strong><p>The human-readable name of a Pi Session, stored in PSST as the session name rather than as a separate display-name abstraction.</p></article>
+          <article class="glossary-card" data-term="session metadata"> <strong>Session Metadata</strong><p>Descriptive facts about a Pi Session such as working directory, session file, model, thinking level, and capability hints.</p></article>
+          <article class="glossary-card" data-term="continue"> <strong>Continue</strong><p>The user-facing action that chooses reconnect, resume, or Start Fresh according to runtime reachability and persisted material.</p></article>
+          <article class="glossary-card" data-term="replacement runtime"> <strong>Replacement runtime</strong><p>A new Pi runtime that carries forward the same Known Session identity after the previous runtime or session file is replaced.</p></article>
+          <article class="glossary-card" data-term="tui status message"> <strong>TUI status message</strong><p>The Phase 3 message shown inside Pi to explain whether PSST linked the session, stayed offline, or carried the same identity into a replacement.</p></article>
+          <article class="glossary-card" data-term="appendentry linkage"> <strong>appendEntry linkage</strong><p>The persisted <code>psst.linkage</code> JSONL record that lets replacement session_start flows reuse the same PSST Session ID.</p></article>
+        </div>
+      </section>
+
+      <section id="issues">
+        <h2>Beads / GitHub issues</h2>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Title</th><th>State</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>psst-beg.1</code></td><td>Phase 1: Hub registry and selection semantics</td><td><span class="phase-badge done">done</span></td><td>The stable base this phase extends without changing the transport, identity, or selection model.</td></tr>
+            <tr><td><code>psst-beg.2</code></td><td>Phase 2: Managed Pi adapter</td><td><span class="phase-badge done">done</span></td><td>Supplies the managed runtime/control contract that Phase 3 deliberately does not replace.</td></tr>
+            <tr><td><code>psst-beg.3</code></td><td>Phase 3: Optional Pi extension self-registration</td><td><span class="phase-badge progress">implemented on branch</span></td><td>Adds the optional bridge for directly launched Pi Sessions, including linkage persistence and TUI messaging.</td></tr>
+            <tr><td><code>gh-82</code></td><td>Phase 3: Optional Pi extension self-registration</td><td><span class="phase-badge progress">open</span></td><td>The linked source issue that defines the exact Phase 3 scope, safety rules, and required tests.</td></tr>
+            <tr><td><code>psst-beg.4</code></td><td>Phase 4: Local web UI</td><td><span class="phase-badge next">next</span></td><td>Uses the richer registry and optional self-registration data to present Known Sessions in a local browser UI.</td></tr>
+            <tr><td><code>psst-beg.5</code></td><td>Phase 5: Telegram adapter</td><td><span class="phase-badge next">next</span></td><td>Builds a remote client adapter on top of the stable Hub and selection contracts.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="git-log">
+        <h2>Git log</h2>
+        <pre><code>f4e26e4 feat: implement phase 3 pi extension self-registration
+aba251b chore: record phase 2 completion in beads
+5d9d3f8 docs: add end-of-phase manual — phase-2-managed-pi-adapter
+b28a228 feat: implement phase 2 managed pi adapter
+9622994 chore: record phase 1 completion in beads
+33cc3c7 docs: add phase manual — phase-1-hub-registry-and-selection-semantics
+2d1461c feat: implement phase 1 hub registry and cli
+07a3ec0 bd init: initialize beads issue tracking
+9f87432 Add PSST ADRs and agent guidance
+6fc6fd8 refactor: goodbye v1
+c7d8cb5 Codex/lock stack guidelines (#6)
+6139083 Close all beads
+0ff78a0 feat: pass extra args to claude on psst resume
+f7dab05 fix: clarify exit prompt and show psst resume command
+9782cfb fix: release stdin before prompting on exit, install to ~/bin
+0110c4f bd init: initialize beads issue tracking
+d1a0d30 chore: remove beads integration (#5)
+0f44117 Orphan Session Recovery (008) (#4)
+9abe721 fix(007): Use screen for TTY and support PSST_SESSION_NAME
+36a374f feat(007): Auto-spawn Claude session for non-reply messages</code></pre>
+      </section>
+
+      <section id="next">
+        <h2>What's next</h2>
+        <p>
+          Phase 4 should turn the richer Known Session data into a local web UI without inventing a second registry or moving selection semantics into the browser. The gate before that begins is to keep the current data contract stable: the Hub still owns identity and routing, the optional Pi extension stays metadata-oriented, and any UI work must consume the same Unix-socket HTTP API rather than bypassing it.
+        </p>
+      </section>
+
+      <footer>
+        PSST phase manual generated on branch <code>codex/022-psst-rewrite-ready</code> for scope <code>phase-3-optional-pi-extension-self-registration</code>.
+      </footer>
+    </main>
+    <script>
+      const canvas = document.getElementById("architecture");
+      const context = canvas.getContext("2d");
+      const boxes = [
+        { x: 40, y: 70, w: 250, h: 92, label: "CLI / future adapters" },
+        { x: 340, y: 70, w: 255, h: 92, label: "Hub daemon (daemon.ts)" },
+        { x: 650, y: 70, w: 255, h: 92, label: "Pi extension" },
+        { x: 935, y: 70, w: 220, h: 92, label: "Pi TUI status" },
+        { x: 120, y: 300, w: 280, h: 120, label: "Session Registry + migration" },
+        { x: 465, y: 300, w: 260, h: 120, label: "Managed Pi adapter" },
+        { x: 790, y: 300, w: 280, h: 120, label: "Pi session JSONL + linkage" },
+        { x: 390, y: 480, w: 380, h: 64, label: "Directly launched Pi Session runtime" }
+      ];
+
+      function drawBox(box) {
+        context.fillStyle = "#fffdf8";
+        context.strokeStyle = "#c9bda8";
+        context.lineWidth = 2;
+        context.fillRect(box.x, box.y, box.w, box.h);
+        context.strokeRect(box.x, box.y, box.w, box.h);
+        context.fillStyle = "#161616";
+        context.font = "26px Georgia";
+        context.textAlign = "center";
+        context.fillText(box.label, box.x + box.w / 2, box.y + box.h / 2 + 8, box.w - 28);
+      }
+
+      function arrow(x1, y1, x2, y2, label) {
+        context.strokeStyle = "#8a5c28";
+        context.fillStyle = "#8a5c28";
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.stroke();
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        context.beginPath();
+        context.moveTo(x2, y2);
+        context.lineTo(x2 - 12 * Math.cos(angle - Math.PI / 6), y2 - 12 * Math.sin(angle - Math.PI / 6));
+        context.lineTo(x2 - 12 * Math.cos(angle + Math.PI / 6), y2 - 12 * Math.sin(angle + Math.PI / 6));
+        context.closePath();
+        context.fill();
+        context.font = "20px Georgia";
+        context.fillText(label, (x1 + x2) / 2, (y1 + y2) / 2 - 10);
+      }
+
+      boxes.forEach(drawBox);
+      arrow(290, 116, 340, 116, "HTTP JSON");
+      arrow(595, 116, 650, 116, "register on session_start");
+      arrow(905, 116, 935, 116, "render status");
+      arrow(470, 162, 260, 300, "persist known-session metadata");
+      arrow(780, 162, 930, 300, "append linkage");
+      arrow(845, 420, 640, 480, "read prior linkage");
+      arrow(595, 360, 465, 360, "keep control path separate");
+
+      document.querySelectorAll(".bar").forEach((bar) => {
+        requestAnimationFrame(() => {
+          bar.style.width = `${bar.dataset.width}%`;
+        });
+      });
+
+      document.querySelectorAll(".copy-button").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const code = button.nextElementSibling.innerText;
+          await navigator.clipboard.writeText(code);
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => { button.textContent = previous; }, 1200);
+        });
+      });
+
+      const search = document.getElementById("glossary-search");
+      const cards = Array.from(document.querySelectorAll(".glossary-card"));
+      search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
+        cards.forEach((card) => {
+          card.style.display = card.dataset.term.includes(query) ? "" : "none";
+        });
+      });
+    </script>
+  </body>
+</html>

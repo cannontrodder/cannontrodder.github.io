@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<!-- MANUAL SCOPE
+     Project:  PSST
+     Branch:   codex/022-psst-rewrite-ready
+     Scope:    phase-4-local-web-ui
+     Covers:   The loopback web bridge, local browser UI, dashboard and inspect flows, selection management, Continue actions, runtime event visibility, and capability-gated controls.
+     Built:    2026-06-20
+     Rebuild:  /flow-progress-manual  (then choose scope: phase-4-local-web-ui)
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>PSST Phase Four Manual</title>
+    <style>
+      :root {
+        --ink: #161616;
+        --mid: #5b5b5b;
+        --faint: #767676;
+        --rule: #d8d2c8;
+        --bg: #fbf8f1;
+        --code-bg: #f1ece2;
+        --accent: #a2602c;
+        --good: #2f6b3b;
+        --warn: #8f5b00;
+        --next: #6a4fb3;
+        --max: 70ch;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: auto; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.6;
+      }
+
+      main {
+        width: min(100%, 78rem);
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+      }
+
+      h1, h2, h3 {
+        line-height: 1.2;
+        font-weight: 600;
+        margin: 0 0 0.8rem;
+      }
+
+      h1 { font-size: clamp(2.6rem, 5vw, 4.2rem); }
+      h2 {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        font-size: 1.7rem;
+      }
+
+      p, li, td, th, figcaption {
+        max-width: var(--max);
+        font-size: 1.05rem;
+      }
+
+      a {
+        color: var(--ink);
+        text-decoration: underline;
+      }
+
+      .hero {
+        padding: 1rem 0 1.75rem;
+      }
+
+      .subtitle {
+        margin: 0;
+        max-width: 62ch;
+        font-size: 1.18rem;
+        color: var(--mid);
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0 0;
+      }
+
+      .badge,
+      .phase-badge {
+        display: inline-block;
+        padding: 0.22rem 0.6rem;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        font-size: 0.9rem;
+        color: var(--mid);
+        background: #fffaf1;
+      }
+
+      .phase-badge.done { border-color: #b4ceb9; color: var(--good); }
+      .phase-badge.progress { border-color: #d8c293; color: var(--warn); }
+      .phase-badge.next { border-color: #cbbce8; color: var(--next); }
+
+      nav.toc {
+        margin: 1.5rem 0 2rem;
+        padding: 1rem 1.15rem;
+        border: 1px solid var(--rule);
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      nav.toc ol {
+        margin: 0.75rem 0 0;
+        padding-left: 1.25rem;
+      }
+
+      .tree,
+      pre,
+      code,
+      .mono {
+        font-family: "Courier New", Courier, monospace;
+      }
+
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--rule);
+        padding: 0.9rem;
+        overflow-x: auto;
+        position: relative;
+        white-space: pre-wrap;
+      }
+
+      .copy-wrap {
+        position: relative;
+        max-width: var(--max);
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 0.6rem;
+        right: 0.6rem;
+        border: 1px solid var(--rule);
+        background: #fffaf1;
+        color: var(--mid);
+        font: inherit;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+      }
+
+      th, td {
+        border-top: 1px solid var(--rule);
+        padding: 0.65rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .invariants li,
+      .timeline li {
+        margin-bottom: 0.6rem;
+      }
+
+      #architecture {
+        width: 100%;
+        max-width: 1200px;
+        border: 1px solid var(--rule);
+        background: #fffdf9;
+        display: block;
+      }
+
+      .exercise {
+        max-width: var(--max);
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.65);
+        padding: 1rem 1rem 1.2rem;
+        margin: 1rem 0;
+      }
+
+      .exercise h3 {
+        margin-bottom: 0.45rem;
+      }
+
+      details {
+        max-width: var(--max);
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.55);
+        padding: 0.8rem 1rem;
+        margin: 0.8rem 0;
+      }
+
+      details summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .chart {
+        max-width: var(--max);
+        margin: 1rem 0;
+      }
+
+      .bar-row {
+        margin: 0.9rem 0;
+      }
+
+      .bar-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.98rem;
+      }
+
+      .bar-track {
+        height: 14px;
+        background: #efe7da;
+        border: 1px solid var(--rule);
+        overflow: hidden;
+      }
+
+      .bar {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #c8894b, #8a5c28);
+        transition: width 900ms ease-out;
+      }
+
+      .glossary-search {
+        width: min(100%, 28rem);
+        padding: 0.65rem 0.75rem;
+        border: 1px solid var(--rule);
+        background: #fffdf9;
+        font: inherit;
+      }
+
+      .glossary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        gap: 0.85rem;
+        margin-top: 1rem;
+      }
+
+      .glossary-card {
+        border: 1px solid var(--rule);
+        background: rgba(255,255,255,0.6);
+        padding: 0.9rem;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        color: var(--faint);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" id="hero">
+        <h1>PSST</h1>
+        <p class="subtitle">
+          Phase 4 adds a local web UI as a loopback-only browser bridge over the existing Hub API, so Known Sessions
+          can be listed, inspected, selected, continued, and observed in a browser without bypassing the Hub’s Unix-socket,
+          PSST-owned identity, or managed-runtime semantics.
+        </p>
+        <div class="badges">
+          <span class="badge">Node 22</span>
+          <span class="badge">TypeScript 5.8</span>
+          <span class="badge">SQLite WAL</span>
+          <span class="badge">Vitest</span>
+          <span class="badge">Branch: codex/022-psst-rewrite-ready</span>
+          <span class="badge">Scope: phase-4-local-web-ui</span>
+        </div>
+      </section>
+
+      <nav class="toc" aria-labelledby="toc-title">
+        <strong id="toc-title">Table of contents</strong>
+        <ol>
+          <li><a href="#delivered">What this phase delivered</a></li>
+          <li><a href="#why">Why this phase exists</a></li>
+          <li><a href="#structure">Repo structure</a></li>
+          <li><a href="#mental-model">Mental model</a></li>
+          <li><a href="#architecture-section">Architecture diagram</a></li>
+          <li><a href="#timeline">Phase timeline</a></li>
+          <li><a href="#walkthrough">Hands-on walkthrough</a></li>
+          <li><a href="#components">Key components</a></li>
+          <li><a href="#tests">Tests</a></li>
+          <li><a href="#proofs">Proof artefacts</a></li>
+          <li><a href="#glossary">Glossary</a></li>
+          <li><a href="#issues">Beads / GitHub issues</a></li>
+          <li><a href="#git-log">Git log</a></li>
+          <li><a href="#next">What's next</a></li>
+        </ol>
+      </nav>
+
+      <section id="delivered">
+        <h2>What this phase delivered</h2>
+        <p>
+          PSST now has a real local browser surface instead of only a CLI and daemon socket. The new
+          <code>src/web-ui.ts</code> module starts a loopback-only HTTP server on <code>127.0.0.1</code>,
+          generates a launch token, and renders the UI by calling the same Hub endpoints the CLI already uses.
+          The browser never talks to SQLite, never reimplements selection logic, and never becomes a second Hub.
+        </p>
+        <p>
+          The dashboard is action-oriented rather than passive. Known Sessions are grouped into Selected Session,
+          Available Now, Can Continue, and Past Work, and each session row can expose inspect, select or unselect,
+          and Continue actions according to the Hub’s own liveness and continuation decision. That preserves the
+          Phase 1 contract that visibility, selection, and controllability stay separate.
+        </p>
+        <p>
+          The inspect page turns a Known Session into usable local operational state. It shows PSST Session ID,
+          working directory, Pi session file, live status, Continue action, current runtime events where available,
+          and only the controls that the managed runtime currently says are safe. Prompt delivery and control
+          actions such as abort and compact go back through the existing managed-runtime API rather than taking a
+          shortcut around it.
+        </p>
+      </section>
+
+      <section id="why">
+        <h2>Why this phase exists</h2>
+        <p>
+          By the end of Phase 3, PSST had the core ingredients for a browser UI but no browser-facing path: the Hub
+          owned durable Known Session rows, selection state, Continue semantics, and managed runtime controls, yet all of
+          that state was exposed only over a Unix domain socket. A browser cannot talk directly to that socket, and ADR
+          0005 explicitly postponed any web-facing endpoint until a browser client actually existed.
+        </p>
+        <p>
+          Phase 4 closes that gap without weakening the earlier boundaries. Instead of moving the Hub to TCP by default,
+          or letting a web page reach into the registry directly, the implementation adds a loopback bridge that only
+          exists when the user launches it. Token validation gates every page load, Origin validation gates mutating
+          browser requests, and the Hub remains the source of truth for Selected Session state, Continue decisions,
+          runtime events, and capability-gated controls.
+        </p>
+      </section>
+
+      <section id="structure">
+        <h2>Repo structure</h2>
+        <pre class="tree">.
+├── AGENTS.md                              — repo instructions, Beads workflow rules, and phase constraints
+├── CONTEXT.md                             — canonical vocabulary for Hub, Known Session, Continue, and selection
+├── package.json                           — Node 22 package manifest plus build, typecheck, and test scripts
+├── docs/adr/                              — fixed architecture decisions that Phase 4 must preserve
+│   ├── 0001-build-the-hub-daemon-first.md
+│   ├── 0002-keep-phase-1-to-registry-semantics.md
+│   ├── 0003-psst-owns-known-session-identity.md
+│   ├── 0004-use-sqlite-wal-for-the-registry.md
+│   ├── 0005-use-http-over-a-unix-socket.md
+│   └── 0006-use-sdk-first-pi-integration.md
+├── docs/manuals/
+│   ├── phase-one-manual.html              — Phase 1 onboarding manual
+│   ├── phase-two-manual.html              — Phase 2 onboarding manual
+│   ├── phase-three-manual.html            — Phase 3 onboarding manual
+│   └── phase-four-manual.html             — this manual
+├── src/
+│   ├── bin/psst.ts                        — CLI entrypoint, now including the `web` command
+│   ├── client.ts                          — Unix-socket JSON client reused by CLI and web bridge
+│   ├── daemon.ts                          — Hub daemon and public HTTP-over-Unix-socket route surface
+│   ├── managed-pi.ts                      — managed runtime tracking, Continue execution, input, control, and event paths
+│   ├── registry.ts                        — durable Session Registry and selection persistence
+│   ├── session-model.ts                   — shared Known Session, capability, and Continue-shape types
+│   ├── web-ui.ts                          — Phase 4 loopback bridge and HTML rendering for dashboard and inspect pages
+│   ├── pi-adapter-factory.ts              — SDK-first, RPC-second adapter selection from Phase 2
+│   ├── pi-rpc-adapter.ts                  — RPC backend
+│   ├── pi-sdk-adapter.ts                  — SDK backend wrapper
+│   └── psst-pi-extension/index.ts         — Phase 3 optional self-registration bridge
+└── tests/
+    ├── e2e/cli.test.ts                    — CLI behavior, including `psst web`
+    ├── integration/daemon-health.test.ts
+    ├── integration/daemon-lifecycle.test.ts
+    ├── integration/session-registry.test.ts
+    ├── integration/managed-pi.test.ts
+    ├── integration/pi-backends.test.ts
+    ├── integration/pi-extension.test.ts
+    ├── integration/local-web-ui.test.ts   — Phase 4 dashboard, inspect, security, input, control, and runtime-event coverage
+    └── support/socket-http.ts             — raw Unix-socket request helper for integration tests</pre>
+      </section>
+
+      <section id="mental-model">
+        <h2>Mental model</h2>
+        <ol class="invariants">
+          <li>The browser is a client, not a second Hub. Every meaningful action still passes through the stable Hub API and keeps PSST Session ID as the primary handle.</li>
+          <li>The loopback bridge exists only when requested. Phase 4 does not change the default daemon transport away from HTTP JSON over a Unix socket.</li>
+          <li>Selection stays a client-scope concern. The web UI uses its own <code>scopeType=web</code> and <code>scopeId=local-ui</code> selection slot instead of stealing the CLI scope.</li>
+          <li>Continue stays a Hub decision. The UI offers it only when the Hub says reconnect or resume is real; it does not invent later-phase Start Fresh behavior.</li>
+          <li>Controls remain capability-gated. The inspect page renders prompt input and runtime controls only when the managed adapter already says those actions are safe for the current Live Runtime.</li>
+        </ol>
+      </section>
+
+      <section id="architecture-section">
+        <h2>Architecture diagram</h2>
+        <p>
+          Phase 4 adds one browser-facing seam and leaves the rest of the stack alone. The CLI starts a loopback server
+          on demand, the bridge authenticates the browser with a launch token plus Origin checks for mutating requests,
+          and every dashboard, inspect, select, Continue, input, control, and event read still flows back into the same
+          Hub routes that earlier phases established.
+        </p>
+        <canvas id="architecture" width="1200" height="560" aria-label="PSST phase four architecture diagram"></canvas>
+      </section>
+
+      <section id="timeline">
+        <h2>Phase timeline</h2>
+        <ul class="timeline">
+          <li><span class="phase-badge done">done</span> Phase 1: Hub registry and selection semantics</li>
+          <li><span class="phase-badge done">done</span> Phase 2: Managed Pi adapter</li>
+          <li><span class="phase-badge done">done</span> Phase 3: Optional Pi extension self-registration</li>
+          <li><span class="phase-badge done">done</span> Phase 4: Local web UI</li>
+          <li><span class="phase-badge next">next</span> Phase 5: Telegram adapter</li>
+          <li><span class="phase-badge next">next</span> Phase 6: Continue semantics, checkpointing, and lifecycle maturity</li>
+        </ul>
+      </section>
+
+      <section id="walkthrough">
+        <h2>Hands-on walkthrough</h2>
+
+        <div class="exercise">
+          <h3>Exercise 1 — install the toolchain</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm install</code></pre></div>
+          <p><strong>Expected outcome</strong> — Node dependencies install and the repo is ready to run the daemon, the CLI, the loopback bridge, and the Vitest suites.</p>
+          <p><strong>What this proves</strong> — Phase 4 lives in the real project build rather than in a sidecar demo or mockup.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 2 — start a clean local Hub daemon</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>node --import tsx src/bin/psst.ts daemon --data-dir /tmp/psst-phase4/data --runtime-dir /tmp/psst-phase4/run</code></pre></div>
+          <p><strong>Expected outcome</strong> — stdout prints one JSON object containing <code>ok</code>, the runtime directory, and the Unix socket path, then the process stays running.</p>
+          <p><strong>What this proves</strong> — the browser-facing phase still starts from the same foreground Hub daemon contract introduced in Phase 1.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 3 — seed Known Sessions through the stable Hub API</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>node --import tsx src/bin/psst.ts --socket /tmp/psst-phase4/run/hub.sock session register --name "Web Demo" --working-directory /projects/web-demo --pi-session-file /tmp/web-demo.jsonl</code></pre></div>
+          <p><strong>Expected outcome</strong> — stdout returns a JSON object containing a new <code>session.psstSessionId</code> plus the durable Known Session metadata.</p>
+          <p><strong>What this proves</strong> — the local web UI phase still consumes the existing Hub API and does not create sessions through a browser-only side channel.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 4 — launch the loopback web UI bridge</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>node --import tsx src/bin/psst.ts --socket /tmp/psst-phase4/run/hub.sock web</code></pre></div>
+          <p><strong>Expected outcome</strong> — stdout prints a JSON object with <code>origin</code>, <code>token</code>, and a fully formed <code>url</code> on <code>127.0.0.1</code>; opening that URL shows the dashboard grouped by Selected Session, Available Now, Can Continue, and Past Work.</p>
+          <p><strong>What this proves</strong> — the browser surface is loopback-only, explicit, and launched on demand instead of changing the daemon’s default transport.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 5 — move a session into the web client’s selection scope</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>node --import tsx src/bin/psst.ts --socket /tmp/psst-phase4/run/hub.sock select &lt;psst-session-id&gt; --scope-type web --scope-id local-ui</code></pre></div>
+          <p><strong>Expected outcome</strong> — stdout confirms the selected session; after refreshing the browser page, that Known Session appears under the Selected Session group instead of the other action buckets.</p>
+          <p><strong>What this proves</strong> — Phase 4 preserves the Phase 1 selection model by reusing the Hub’s client-scope selection API rather than inventing browser-local selection state.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 6 — verify the local web UI behavior directly</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test -- tests/integration/local-web-ui.test.ts tests/e2e/cli.test.ts</code></pre></div>
+          <p><strong>Expected outcome</strong> — Vitest passes the dashboard grouping, inspect page, selection, token and Origin checks, runtime events, capability-gated controls, input delivery, control actions, and <code>psst web</code> CLI entrypoint tests.</p>
+          <p><strong>What this proves</strong> — the browser bridge and the browser-facing behavior are executable, repeatable, and covered as public contracts.</p>
+        </div>
+
+        <div class="exercise">
+          <h3>Exercise 7 — run the whole branch contract</h3>
+          <p><strong>Command</strong></p>
+          <div class="copy-wrap"><button class="copy-button" type="button">Copy</button><pre><code>npm test && npm run typecheck && npm run build</code></pre></div>
+          <p><strong>Expected outcome</strong> — all 32 tests pass, TypeScript reports no errors, and the project builds successfully.</p>
+          <p><strong>What this proves</strong> — the new local browser surface fits cleanly on top of the earlier Hub, managed-runtime, and Pi-extension phases without breaking any public contract.</p>
+        </div>
+      </section>
+
+      <section id="components">
+        <h2>Key components</h2>
+
+        <details open>
+          <summary><code>src/web-ui.ts</code> — loopback bridge and HTML rendering</summary>
+          <p>This module is the heart of Phase 4. It starts the loopback-only server, generates the tokenized launch URL, validates Origin on mutating browser requests, renders the dashboard and inspect pages, and proxies every action back into the existing Hub API.</p>
+          <pre><code>if (request.method === "POST" &amp;&amp; request.headers.origin !== origin) {
+  response.writeHead(403);
+}
+await client.post(`/v1/sessions/${sessionId}/continue`);</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/bin/psst.ts</code> — explicit `web` launcher</summary>
+          <p>The CLI gained a new <code>web</code> command that starts the bridge only when needed, prints the loopback origin and tokenized URL, and leaves the default daemon transport untouched.</p>
+          <pre><code>const webUi = await startLocalWebUi({ socketPath: options.socketPath ?? defaultSocketPath() });
+writeJson({ ok: true, origin: webUi.origin, token: webUi.token, url: webUi.url });</code></pre>
+        </details>
+
+        <details>
+          <summary><code>src/daemon.ts</code> and <code>src/managed-pi.ts</code> — existing public contract reused by the browser</summary>
+          <p>Phase 4 deliberately consumes the existing session list, selection, Continue, input, control, and event endpoints rather than adding a parallel browser-only transport or reaching directly into the Session Registry.</p>
+          <pre><code>GET  /v1/sessions
+GET  /v1/sessions/:id
+POST /v1/selections
+POST /v1/sessions/:id/continue
+POST /v1/sessions/:id/input
+GET  /v1/sessions/:id/events</code></pre>
+        </details>
+
+        <details>
+          <summary><code>tests/integration/local-web-ui.test.ts</code> — Phase 4 behavior proof</summary>
+          <p>This suite drives the bridge through its public browser-facing routes and real Hub endpoints. It covers grouping, inspect rendering, web-scope selection, token and Origin checks, event visibility, capability-gated controls, and runtime input/control action delivery.</p>
+          <pre><code>expect(html).toContain("Runtime Events");
+expect(adapter.handles[0].inputCalls).toEqual([{ kind: "prompt", text: "Ship it" }]);
+expect(response.status).toBe(403);</code></pre>
+        </details>
+
+        <details>
+          <summary><code>tests/e2e/cli.test.ts</code> — browser launch path proof</summary>
+          <p>The CLI end-to-end suite now proves that <code>psst web</code> starts the bridge, prints a usable launch URL, and serves the dashboard over loopback.</p>
+          <pre><code>const webUi = await startCliWebUi(".", ["--socket", daemon.socketPath, "web"]);
+const response = await fetch(webUi.url);</code></pre>
+        </details>
+      </section>
+
+      <section id="tests">
+        <h2>Tests</h2>
+        <p>
+          Phase 4 keeps the same integration-style posture as the earlier phases. The new UI is tested through its real public
+          seams: browser-facing loopback routes, the stable Hub API, and the CLI launcher. That keeps the tests focused on user-visible
+          behavior rather than internal template structure.
+        </p>
+        <div class="chart" aria-label="Test suite bar chart">
+          <div class="bar-row"><div class="bar-label"><span>daemon-health</span><span>1 test</span></div><div class="bar-track"><div class="bar" data-width="15"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>daemon-lifecycle</span><span>4 tests</span></div><div class="bar-track"><div class="bar" data-width="48"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>session-registry</span><span>6 tests</span></div><div class="bar-track"><div class="bar" data-width="72"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>managed-pi</span><span>4 tests</span></div><div class="bar-track"><div class="bar" data-width="48"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>pi-backends</span><span>3 tests</span></div><div class="bar-track"><div class="bar" data-width="36"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>pi-extension</span><span>4 tests</span></div><div class="bar-track"><div class="bar" data-width="48"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>local-web-ui</span><span>7 tests</span></div><div class="bar-track"><div class="bar" data-width="84"></div></div></div>
+          <div class="bar-row"><div class="bar-label"><span>cli-e2e</span><span>4 tests</span></div><div class="bar-track"><div class="bar" data-width="48"></div></div></div>
+        </div>
+        <details open>
+          <summary>Exact test names</summary>
+          <pre><code>daemon-health
+- serves health over a Unix socket
+
+daemon-lifecycle
+- does not deduplicate by working directory and machine alone
+- updates liveness on heartbeat and persists selection across restart
+- cleans up a stale socket file and prevents a second live daemon
+- serves concurrent readers against the same SQLite registry
+
+session-registry
+- registers a Known Session with a PSST-owned identity and lists it
+- applies duplicate matching priority and keeps the Known Session identity stable
+- preserves existing metadata when a duplicate registration omits optional fields
+- persists selection lifecycle by client scope
+- persists sessions across daemon restarts and computes Continue from liveness
+- upgrades a Phase 2 registry and accepts Phase 3 session metadata
+
+managed-pi
+- resumes a Known Session when Continue has persisted Pi material but no live runtime
+- reconnects an attached runtime, delivers input, and exposes runtime events
+- returns Start Fresh when Continue has neither a live runtime nor resumable Pi material
+- replaces the active Pi session on control/new and drops old event subscriptions
+
+pi-backends
+- maps SDK session APIs to managed session operations and replacement handles
+- spawns RPC mode, emits JSONL commands, and forwards runtime events
+- prefers the SDK backend and falls back to RPC when no SDK launcher is supplied
+
+pi-extension
+- self-registers a directly launched Pi Session, enriches Hub metadata, and persists PSST linkage
+- returns an offline TUI status without mutating the session file when the Hub is absent
+- keeps the PSST Session identity stable across replacement session_start flows
+
+local-web-ui
+- renders a dashboard of Known Sessions grouped by action-oriented status
+- renders inspect, selection, and Continue actions on the dashboard
+- selects a Known Session for the web client scope
+- rejects mutating requests from the wrong Origin even with a valid token
+- renders an inspect view for a Known Session
+- shows runtime events and capability-gated controls after Continue attaches a live runtime
+- delivers input and live control actions through the web bridge
+
+cli-e2e
+- reports daemon status
+- starts the daemon from the CLI entrypoint
+- registers, selects, inspects, continues, and unselects a Known Session
+- starts the local web UI from the CLI entrypoint</code></pre>
+        </details>
+      </section>
+
+      <section id="proofs">
+        <h2>Proof artefacts</h2>
+        <table>
+          <thead>
+            <tr><th>Artefact</th><th>What it proves</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>src/web-ui.ts</code></td><td>PSST has a loopback-only browser bridge that consumes the existing Hub API for dashboard, inspect, selection, Continue, input, control, and event reads.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>src/bin/psst.ts</code></td><td>The browser-facing endpoint only exists on demand through the new <code>psst web</code> command.</td><td><span class="phase-badge done">implemented</span></td></tr>
+            <tr><td><code>tests/integration/local-web-ui.test.ts</code></td><td>Grouping, inspect, selection, Origin enforcement, event visibility, input delivery, and control actions are executable public behavior.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>tests/e2e/cli.test.ts</code></td><td>The CLI launch path for the local web UI works end to end and serves a usable loopback URL.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>package.json</code></td><td>The full branch still verifies through <code>npm test</code>, <code>npm run typecheck</code>, and <code>npm run build</code>.</td><td><span class="phase-badge done">verified</span></td></tr>
+            <tr><td><code>docs/manuals/phase-four-manual.html</code></td><td>The project now includes an onboarding manual for the local web UI phase in the same repo-native editorial format as earlier phases.</td><td><span class="phase-badge done">documented</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="glossary">
+        <h2>Glossary</h2>
+        <input class="glossary-search" id="glossary-search" type="search" placeholder="Search glossary terms" />
+        <div class="glossary-grid" id="glossary-grid">
+          <article class="glossary-card" data-term="hub"><strong>Hub</strong><p>The long-running PSST service that owns discovery, routing, the Session Registry, and client-facing selection state.</p></article>
+          <article class="glossary-card" data-term="known session"><strong>Known Session</strong><p>A Pi Session that is running now or has previously been seen by the Hub.</p></article>
+          <article class="glossary-card" data-term="selected session"><strong>Selected Session</strong><p>The Known Session currently chosen for a given client scope, including the web UI’s own <code>web/local-ui</code> scope.</p></article>
+          <article class="glossary-card" data-term="session selection"><strong>Session Selection</strong><p>The client-side choice to point at a specific Known Session without changing the Session Registry’s durable identity model.</p></article>
+          <article class="glossary-card" data-term="psst session id"><strong>PSST Session ID</strong><p>The Hub-owned durable handle for registry rows, selection state, and Continue actions.</p></article>
+          <article class="glossary-card" data-term="continue"><strong>Continue</strong><p>The user-facing action that lets the Hub choose reconnect or resume according to runtime reachability and persisted session material.</p></article>
+          <article class="glossary-card" data-term="live runtime"><strong>Live Runtime</strong><p>The currently running managed runtime backing a Pi Session and exposing input, event, and control capabilities.</p></article>
+          <article class="glossary-card" data-term="capability"><strong>Capability</strong><p>A safe action or property the Hub believes a Known Session or Live Runtime can currently support, such as receive-input or abort.</p></article>
+          <article class="glossary-card" data-term="runtime events"><strong>Runtime Events</strong><p>Managed-runtime events such as message updates that the Hub can expose to the inspect page when a live binding exists.</p></article>
+          <article class="glossary-card" data-term="working directory"><strong>Working Directory</strong><p>The local folder or repository path associated with a Pi Session and displayed in the inspect view.</p></article>
+          <article class="glossary-card" data-term="loopback web bridge"><strong>Loopback web bridge</strong><p>The Phase 4 browser-facing HTTP layer on <code>127.0.0.1</code> that proxies back into the existing Unix-socket Hub API.</p></article>
+          <article class="glossary-card" data-term="origin validation"><strong>Origin validation</strong><p>The browser-side safety check that rejects mutating web requests unless they originate from the launched loopback UI origin.</p></article>
+        </div>
+      </section>
+
+      <section id="issues">
+        <h2>Beads / GitHub issues</h2>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Title</th><th>State</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>psst-beg.1</code></td><td>Phase 1: Hub registry and selection semantics</td><td><span class="phase-badge done">done</span></td><td>Supplies the identity, liveness, selection, and Continue terminology that the browser must preserve.</td></tr>
+            <tr><td><code>psst-beg.2</code></td><td>Phase 2: Managed Pi adapter</td><td><span class="phase-badge done">done</span></td><td>Provides the runtime input, control, and event endpoints that Phase 4 surfaces only when capability-gated.</td></tr>
+            <tr><td><code>psst-beg.3</code></td><td>Phase 3: Optional Pi extension self-registration</td><td><span class="phase-badge done">done</span></td><td>Feeds richer Known Session metadata into the browser without moving control semantics out of the Hub.</td></tr>
+            <tr><td><code>psst-beg.4</code></td><td>Phase 4: Local web UI</td><td><span class="phase-badge progress">implemented on branch</span></td><td>Adds the loopback bridge, dashboard, inspect page, selection actions, Continue flow, event view, and capability-gated controls.</td></tr>
+            <tr><td><code>gh-83</code></td><td>Phase 4: Local web UI</td><td><span class="phase-badge progress">source authority</span></td><td>Defines the explicit Phase 4 scope: loopback reachability, token and Origin security, dashboard and inspect flows, Continue, events, and browser tests.</td></tr>
+            <tr><td><code>psst-beg.5</code></td><td>Phase 5: Telegram adapter</td><td><span class="phase-badge next">next</span></td><td>Will consume the same Hub semantics from a remote client adapter once the local browser surface has proved itself.</td></tr>
+            <tr><td><code>psst-beg.6</code></td><td>Phase 6: Continue semantics, checkpointing, and lifecycle maturity</td><td><span class="phase-badge next">next</span></td><td>Will deepen Continue, checkpoint, export, import, and packaging behavior after the local clients are in place.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="git-log">
+        <h2>Git log</h2>
+        <pre><code>dd49da0 feat: implement phase 4 local web ui
+5362101 chore: record phase 3 completion in beads
+04ab374 docs: add end-of-phase manual — phase-3-optional-pi-extension-self-registration
+f4e26e4 feat: implement phase 3 pi extension self-registration
+aba251b chore: record phase 2 completion in beads
+5d9d3f8 docs: add end-of-phase manual — phase-2-managed-pi-adapter
+b28a228 feat: implement phase 2 managed pi adapter
+9622994 chore: record phase 1 completion in beads
+33cc3c7 docs: add phase manual — phase-1-hub-registry-and-selection-semantics
+2d1461c feat: implement phase 1 hub registry and cli
+07a3ec0 bd init: initialize beads issue tracking
+9f87432 Add PSST ADRs and agent guidance
+6fc6fd8 refactor: goodbye v1
+c7d8cb5 Codex/lock stack guidelines (#6)
+6139083 Close all beads
+0ff78a0 feat: pass extra args to claude on psst resume
+f7dab05 fix: clarify exit prompt and show psst resume command
+9782cfb fix: release stdin before prompting on exit, install to ~/bin
+0110c4f bd init: initialize beads issue tracking
+d1a0d30 chore: remove beads integration (#5)</code></pre>
+      </section>
+
+      <section id="next">
+        <h2>What's next</h2>
+        <p>
+          Phase 5 should add Telegram as another client adapter over the same Hub semantics rather than inventing a second
+          routing model. The prerequisite gate is to preserve what Phase 4 just proved: the Hub remains the only source of
+          truth for Known Session identity, selection, Continue behavior, and runtime capabilities, while remote clients must
+          consume those semantics instead of re-deriving them from transport-specific assumptions.
+        </p>
+      </section>
+
+      <footer>
+        PSST phase manual generated on branch <code>codex/022-psst-rewrite-ready</code> for scope <code>phase-4-local-web-ui</code>.
+      </footer>
+    </main>
+    <script>
+      const canvas = document.getElementById("architecture");
+      const context = canvas.getContext("2d");
+      const boxes = [
+        { x: 40, y: 70, w: 220, h: 92, label: "Browser tab" },
+        { x: 315, y: 70, w: 270, h: 92, label: "Loopback web bridge" },
+        { x: 650, y: 70, w: 235, h: 92, label: "HubClient" },
+        { x: 945, y: 70, w: 210, h: 92, label: "Hub daemon" },
+        { x: 90, y: 315, w: 250, h: 110, label: "Dashboard + inspect HTML" },
+        { x: 395, y: 315, w: 255, h: 110, label: "Token + Origin checks" },
+        { x: 705, y: 315, w: 235, h: 110, label: "Session Registry" },
+        { x: 965, y: 315, w: 185, h: 110, label: "Managed Pi runtime" }
+      ];
+
+      function drawBox(box) {
+        context.fillStyle = "#fffdf8";
+        context.strokeStyle = "#c9bda8";
+        context.lineWidth = 2;
+        context.fillRect(box.x, box.y, box.w, box.h);
+        context.strokeRect(box.x, box.y, box.w, box.h);
+        context.fillStyle = "#161616";
+        context.font = "26px Georgia";
+        context.textAlign = "center";
+        context.fillText(box.label, box.x + box.w / 2, box.y + box.h / 2 + 8, box.w - 28);
+      }
+
+      function arrow(x1, y1, x2, y2, label) {
+        context.strokeStyle = "#8a5c28";
+        context.fillStyle = "#8a5c28";
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.stroke();
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        context.beginPath();
+        context.moveTo(x2, y2);
+        context.lineTo(x2 - 12 * Math.cos(angle - Math.PI / 6), y2 - 12 * Math.sin(angle - Math.PI / 6));
+        context.lineTo(x2 - 12 * Math.cos(angle + Math.PI / 6), y2 - 12 * Math.sin(angle + Math.PI / 6));
+        context.closePath();
+        context.fill();
+        context.font = "20px Georgia";
+        context.fillText(label, (x1 + x2) / 2, (y1 + y2) / 2 - 10);
+      }
+
+      boxes.forEach(drawBox);
+      arrow(260, 116, 315, 116, "GET pages / POST forms");
+      arrow(585, 116, 650, 116, "proxy over Unix socket");
+      arrow(885, 116, 945, 116, "HTTP JSON");
+      arrow(200, 162, 200, 315, "rendered UI");
+      arrow(450, 162, 520, 315, "enforce browser safety");
+      arrow(1035, 162, 825, 315, "sessions + selections");
+      arrow(1035, 162, 1055, 315, "input / control / events");
+      arrow(650, 370, 945, 116, "no direct browser access");
+
+      document.querySelectorAll(".bar").forEach((bar) => {
+        requestAnimationFrame(() => {
+          bar.style.width = `${bar.dataset.width}%`;
+        });
+      });
+
+      document.querySelectorAll(".copy-button").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const code = button.nextElementSibling.innerText;
+          await navigator.clipboard.writeText(code);
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => { button.textContent = previous; }, 1200);
+        });
+      });
+
+      const search = document.getElementById("glossary-search");
+      const cards = Array.from(document.querySelectorAll(".glossary-card"));
+      search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
+        cards.forEach((card) => {
+          card.style.display = card.dataset.term.includes(query) ? "" : "none";
+        });
+      });
+    </script>
+  </body>
+</html>
