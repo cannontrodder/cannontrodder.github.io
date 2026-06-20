@@ -1,2 +1,2 @@
 User-agent: *
-Disallow: /manuals/
+Disallow: /m8k2xp/
